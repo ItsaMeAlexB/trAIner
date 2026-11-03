@@ -21,12 +21,40 @@ This extends to shorthand food logging ("same as yesterday without apple") — n
 
 ## Runtime
 
-- **Host:** GitHub Actions (scheduled workflow).
-- **Schedule:** Daily at 05:00 UTC. No guard, no peak-pricing avoidance. GitHub queue delays are accepted.
+- **Host:** GitHub Actions today; planned move to a VPS (see VPS deployment).
+- **Schedule:** GitHub Actions at 05:00 UTC. VPS target: **06:15 Europe/Berlin daily** (05:15 UTC in winter, 04:15 UTC in summer), inside DeepSeek off-peak and clear of the 06:30 job.
 - **Data store:** Google Sheets (6 tabs).
 - **UI:** Telegram — **one-way only.** No user input via Telegram. No message history sent to DeepSeek. Telegram receives the day's plan and weather summary.
 - **DeepSeek API:** Official host (`https://api.deepseek.com`).
 - **No dry-run mode.**
+
+## VPS deployment (planned)
+
+The local directory remains the test environment. On the VPS, run the same `main.py` from a single checkout with a systemd timer; no extra scheduler code is needed.
+
+```ini
+# /etc/systemd/system/trainer.service
+[Service]
+WorkingDirectory=/opt/trAIner
+ExecStart=/usr/bin/python3 main.py
+EnvironmentFile=/opt/trAIner/.env
+User=alex
+```
+
+```ini
+# /etc/systemd/system/trainer.timer
+[Timer]
+OnCalendar=*-*-* 06:15:00
+Persistent=true
+```
+
+```bash
+sudo timedatectl set-timezone Europe/Berlin
+sudo systemctl enable --now trainer.timer
+```
+
+`Persistent=true` catches up after downtime. The target is 06:15 German time (05:15 UTC winter / 04:15 UTC summer), which stays inside DeepSeek off-peak and leaves the 06:30 job untouched.
+
 
 ## Daily pipeline
 
@@ -284,7 +312,7 @@ Optional tuning: `DEEPSEEK_MODEL` (default `deepseek-chat`), `DEEPSEEK_MAX_TOKEN
 
 ### 5. Schedule
 
-GitHub Actions workflow runs on `cron: "0 5 * * *"` (05:00 UTC). Use `workflow_dispatch` for manual testing.
+GitHub Actions workflow runs on `cron: "0 5 * * *"` (05:00 UTC). Use `workflow_dispatch` for manual testing. The planned VPS timer runs at 06:15 Europe/Berlin (see VPS deployment).
 
 ## Local run
 
