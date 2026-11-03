@@ -1,0 +1,4 @@
+{
+  "_note": "Hevy exercise-to-exercise conversion ratios (GROUP_COEFFS). Extract from the hevy-ranks repo (src/engine.js) per README 'Setup -> Download and prepare offline datasets'. Absent values degrade to the built-in fallback muscle-group map in main.py.",
+  "GROUP_COEFFS": {}
+}

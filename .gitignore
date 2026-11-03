@@ -1,0 +1,20 @@
+# Secrets / credentials
+.env
+*.json
+# Committed offline datasets are the exception.
+!data/*.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Runtime artifacts
+trainer.log
+*.log
+
+# Local doc extraction
+docx_extracted/
+doc_text.txt

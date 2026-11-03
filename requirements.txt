@@ -1,0 +1,6 @@
+requests>=2.31
+gspread>=6.0
+google-auth>=2.0
+strength-utils>=0.1.2
+pandas>=2.0
+tenacity>=8.0
