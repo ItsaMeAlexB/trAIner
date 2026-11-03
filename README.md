@@ -189,6 +189,7 @@ Non-lifting and non-running activities are just treated separately — something
 | `data/running_benchmarks.csv` | Normalised NRCD, filtered and standardised |
 | `data/exercise_coefficients.json` | Extracted Hevy `GROUP_COEFFS` |
 | `data/strength-report-2026.csv` | Hardy progression benchmarks |
+| `tests/test_main.py` | Stdlib `unittest` checks for parsers, weekly aggregation, context rendering |
 
 ## Decision-making process
 
@@ -262,8 +263,8 @@ curl -o data/strength-report-2026.csv https://hardy.app/strength-report-data.csv
 ### 3. Create sheet tabs
 
 ```bash
-python setup_sheets.py            # idempotent: create/repair tabs
-python setup_sheets.py --rebuild  # recreate tabs (refuses non-empty tabs)
+python setup_sheets.py                 # idempotent: create/repair tabs
+python setup_sheets.py --reset-rolling # after a schema change: backs up Health/Diet/Exercise, keeps Strategy/Pantry/Patterns
 ```
 
 ### 4. GitHub Secrets
@@ -289,7 +290,7 @@ GitHub Actions workflow runs on `cron: "0 5 * * *"` (05:00 UTC). Use `workflow_d
 
 ```bash
 pip install -r requirements.txt
-python setup_sheets.py --rebuild   # first time, or after a schema change
+python setup_sheets.py --reset-rolling   # first time, or after a schema change
 python main.py
 python -m unittest discover -s tests -v
 ```
