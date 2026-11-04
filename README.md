@@ -238,6 +238,7 @@ Generated benchmark files (committed):
 | `data/strength-report-2026.csv` | Hardy progression benchmarks (CC BY 4.0) |
 | `scripts/build_*.py` | Rebuild compact benchmark files; raw downloads stay in `data/raw/` |
 | `scripts/setup_charts.py` | Create the Dashboard charts once |
+| `scripts/rebuild_chart_data.py` | Backfill the Charts tab from the progression table |
 | `deploy/trainer.{service,timer}` | VPS systemd units |
 | `tests/test_main.py` | Stdlib `unittest` checks for parsers, benchmarks, charts, aggregation |
 

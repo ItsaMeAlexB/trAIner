@@ -817,11 +817,9 @@ def _health_profile(sheets: Sheets) -> tuple[str, int, float]:
     return sex, birth_year, weight
 
 
-def write_chart_data(sheets: Sheets) -> None:
+def write_chart_data(sheets: Sheets, weekly: dict) -> None:
     sex, birth_year, weight = _health_profile(sheets)
-    rows = sheets.read_table(TAB_EXERCISE, PROGRESSION_HEADER_ROW,
-                             PROGRESSION_HEADERS, PROGRESSION_WEEKS)
-    for week in rows:
+    for week in weekly.values():
         row_weight = week.get("Bodyweight_kg", "") or weight
         try:
             row_weight = float(row_weight)
@@ -1503,7 +1501,7 @@ def write_back(sheets: Sheets, today: str, plan: dict, collapsed: dict) -> None:
             TAB_EXERCISE, PROGRESSION_HEADER_ROW, PROGRESSION_HEADERS,
             "Week_start", values, PROGRESSION_WEEKS)
 
-    write_chart_data(sheets)
+    write_chart_data(sheets, collapsed.get("weekly") or {})
     log.info("Wrote back recommendations to Diet/Exercise for %s", today)
 
 
