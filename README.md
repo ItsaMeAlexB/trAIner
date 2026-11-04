@@ -21,8 +21,8 @@ This extends to shorthand food logging ("same as yesterday without apple") — n
 
 ## Runtime
 
-- **Host:** GitHub Actions today; planned move to a VPS (see VPS deployment).
-- **Schedule:** GitHub Actions at 05:00 UTC. VPS target: **06:15 Europe/Berlin daily** (05:15 UTC in winter, 04:15 UTC in summer), inside DeepSeek off-peak and clear of the 06:30 job.
+- **Host:** none yet. The local directory and GitHub repo are storage only; execution will move to the VPS later.
+- **Schedule:** no scheduler is active. Planned VPS target: **06:15 Europe/Berlin daily** (05:15 UTC in winter, 04:15 UTC in summer), inside DeepSeek off-peak and clear of the 06:30 job.
 - **Data store:** Google Sheets (8 tabs: 6 data tabs + `Charts` data tab + `Dashboard`).
 - **UI:** Telegram — **one-way only.** No user input via Telegram. No message history sent to DeepSeek. Telegram receives the day's plan and weather summary.
 - **DeepSeek API:** Official host (`https://api.deepseek.com`).
@@ -324,7 +324,7 @@ python setup_sheets.py --reset-rolling # after a schema change: backs up Health/
 python scripts/setup_charts.py         # create the 7 Dashboard charts (once)
 ```
 
-### 4. GitHub Secrets
+### 4. VPS / environment secrets (not committed)
 
 | Secret | Purpose |
 |---|---|
@@ -341,7 +341,7 @@ Optional tuning: `DEEPSEEK_MODEL` (default `deepseek-chat`), `DEEPSEEK_MAX_TOKEN
 
 ### 5. Schedule
 
-GitHub Actions workflow runs on `cron: "0 5 * * *"` (05:00 UTC). Use `workflow_dispatch` for manual testing. The planned VPS timer runs at 06:15 Europe/Berlin (see VPS deployment).
+No workflow or scheduler is committed. The planned VPS timer runs at 06:15 Europe/Berlin (see VPS deployment); nothing is actioned until the VPS handover.
 
 ## Local run
 
@@ -428,7 +428,7 @@ These are intentionally not fixed yet:
 7. **Illness/allergy snapshots are not stored.** Patterns capture events, but there is no “around this illness” window linking sleep, diet, allergies and performance. Add a snapshot block or a `Health_event` reference; use it in the review.
 8. **Niche history is only one cell.** `Niche_trend` is overwritten daily. Add an append-only niche summary or weekly niche rows; only write when the daily run has a meaningful change.
 9. **Chart data only writes current/previous weeks.** `write_chart_data()` is intentionally limited to avoid quota; run `scripts/rebuild_chart_data.py` after schema changes or to backfill. `Charts` stays header-only until a progression row and `Birth_year`/`Gender`/`Weight_kg` exist.
-10. **VPS handover.** `deploy/trainer.service` and `deploy/trainer.timer` are ready; the VPS is already provisioned in Europe/Berlin. Disable the GitHub Actions schedule when the VPS timer becomes primary, otherwise both write to the sheet.
+10. **VPS handover.** `deploy/trainer.service` and `deploy/trainer.timer` are ready but not installed. No GitHub Actions workflow exists. When the VPS takes over, install the units; nothing runs before then.
 
 ### Current caveats that are intentional
 
