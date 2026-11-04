@@ -358,6 +358,47 @@ python -m unittest discover -s tests -v
 
 **Dependencies:** `gspread`, `requests`, `strength-utils`, `pandas`, `tenacity`.
 
+## Handoff: implemented vs unresolved
+
+This section is the starting point for a fresh context. The working tree is clean and the last pushed commit is the source of truth.
+
+### Implemented
+
+- Two-column daily blocks (`Recommended | Done`) with a `Complete` row; 14-day Exercise, 7-day Diet, 35-day Health raw windows.
+- 12-week summaries per domain and a 104-week progression table on Exercise.
+- Lift parsing with names, sets/reps/weight, lb→kg, bare `done` as prescribed, and Hevy coefficient normalisation (`reference_e1RM = e1RM / coefficient`).
+- Five stable lift benchmarks: Squat, Bench, Posterior, OHP, Pull.
+- Running normalisation through `calcpace_port`; weekly best 5K and 400m equivalents.
+- Niche metrics (jump, broad jump, 10m sprint, mobility) and a one-line `Niche_trend` cell.
+- Compact benchmark files:
+  - `data/benchmarks/running_percentiles.csv` from Italian Athletics (CC0), sex × 5-year age band × 400/800/5000/10000 m × p10–p90.
+  - `data/benchmarks/lift_percentiles.csv` from LiftGauge/OpenPowerlifting (CC0), sex × S/B/D × IPF weight class × age × p10–p90.
+  - `data/exercise_coefficients.json` from Hevy Ranks (MIT).
+- `Charts` tab (machine data) and `Dashboard` tab with 7 line charts; bands are constant p10–p90 series because Sheets has no native horizontal reference-line field.
+- `Birth_year` in Health so band lookup can use exact age.
+- VPS unit files in `deploy/` (`06:15 Europe/Berlin`, `Persistent=true`, `TimeoutStartSec=1800`).
+- 16 stdlib tests pass.
+
+### Unresolved / next implementation
+
+1. **Activity parsing is still shallow.** `_parse_runs()` only extracts distance + finish time. It does not parse zone, terrain, elevation, weather, intervals, or hike/swim/cycle text. `collapse_logs()` calls `calcpace_port.normalise_seconds()` with defaults (`grade=0`, `temp=8`, `alt=0`). Next: a structured activity parser that isolates warm-up/interval/cooldown segments, extracts terrain/weather if present, and only normalises the relevant segment. A 5K Zone 2 hilly run contributes to the aerobic curve; a 400m interval contributes to the anaerobic curve. Do not apply running equivalences to hiking/swimming/cycling; those are calories/recovery context only.
+2. **Hybrid lifts are not split.** `_benchmark_lift()` maps "squat shoulder press" to Squat because "squat" matches first. Do not normalise hybrids by default; keep them in free-form `Done`/`Niche_trend`, or add an explicit split syntax (e.g. `Squat 3x5@100 / OHP 3x6@40`) before mapping. If hybrids must enter progression, use weekly best rather than mean to limit skew.
+3. **OHP/Pull percentile bands are missing.** LiftGauge only covers Squat/Bench/Deadlift. Fitness Volt `fvss/v1` does cover OHP/Row/Pull-up (CC BY 4.0), but the site is Cloudflare-blocked from this environment. Options: run the builder from a different network, add a cached JSON fixture, or leave those two charts user-only. Do not fabricate bands.
+4. **Olympic lifts are not implemented.** Add Snatch, Clean & Jerk and Total as progression/chart metrics for mobility/plyometric tracking. Candidate sources: World Masters Weightlifting (OSF `wy5mr`) and OpenPowerlifting-adjacent data if suitable. Define whether to store absolute kg, bodyweight ratio, or a Sinclair/GAMX-style age/bodyweight-adjusted score.
+5. **Timeframes need one deliberate pass.** Current constants at the top of `main.py`: `WINDOW_DAYS = {exercise: 14, diet: 7, health: 35}`, `WEEKLY_SUMMARY_WEEKS = 12`, `PROGRESSION_WEEKS = 104`. Research/decide: sleep debt ~2 weeks, menstrual cycle ~4 weeks, training recovery ~1 week, diet shorter. Change the dict, not the pipeline.
+6. **The 4-week review is not a separate pre-run.** `run()` currently asks the daily DeepSeek call for the review and then applies Strategy updates in the same run. The requested design is: review run first (long-term data only, update Strategy), then normal daily run using the updated Strategy. Implement as `python main.py --review` or a separate `review.py`, with the systemd timer running review then daily, or a second timer before 06:15.
+7. **Illness/allergy snapshots are not stored.** Patterns capture events, but there is no “around this illness” window linking sleep, diet, allergies and performance. Add a snapshot block or a `Health_event` reference; use it in the review.
+8. **Niche history is only one cell.** `Niche_trend` is overwritten daily. Add an append-only niche summary or weekly niche rows; only write when the daily run has a meaningful change.
+9. **Chart data only writes current/previous weeks.** `write_chart_data()` is intentionally limited to avoid quota; run `scripts/rebuild_chart_data.py` after schema changes or to backfill. `Charts` stays header-only until a progression row and `Birth_year`/`Gender`/`Weight_kg` exist.
+10. **VPS handover.** `deploy/trainer.service` and `deploy/trainer.timer` are ready; the VPS is already provisioned in Europe/Berlin. Disable the GitHub Actions schedule when the VPS timer becomes primary, otherwise both write to the sheet.
+
+### Current caveats that are intentional
+
+- Google Sheets has no native horizontal chart reference lines; bands are added as constant series.
+- Charts API cannot fully style charts; manual colours/dashes may be needed.
+- Fitness Volt is used only where reachable; OHP/Pull bands are absent rather than guessed.
+- Raw datasets are not committed; only compact aggregates are.
+
 ## Caveats
 
 - **Google Fit is not used.** Sleep, steps, and resting HR are input manually (or via free text in Health).
@@ -365,7 +406,8 @@ python -m unittest discover -s tests -v
 - **USDA demo key** has a 30 req/hr limit. Get a free personal key (1,000 req/hr) at fdc.nal.usda.gov — takes 30 seconds.
 - **Fitness Volt API** returns two separate populations (verified competition vs. self-reported gym). Never blended. Attribution required (CC BY 4.0).
 - **Hardy CSV** cannot answer bodyweight-relative strength questions. Fitness Volt covers that.
-- **NRCD normalisation** is a one-time step; once committed, running progression functions like lifting progression with no runtime API for the math.
+- **Running bands** come from Italian Athletics (CC0, age/sex); NRCD (CC BY 4.0) is gender/grade only and is secondary.
+- **Lift bands** come from LiftGauge/OpenPowerlifting (CC0); OHP/Pull bands are absent because no reachable equivalent dataset was found.
 - **Other activities** (hiking, swimming, cycling, etc.) are not converted to running equivalents. They are logged separately, used for short-term calorie/recovery context, and do not enter long-term progression graphs.
 - **Brain endurance training** is not implemented; may be added later to Strategy.
 - **Reaction/allergy tracking** is caught via Patterns from the "done" column text, not a dedicated flag column.
