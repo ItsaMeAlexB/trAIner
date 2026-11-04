@@ -21,11 +21,12 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from main import (  # noqa: E402
     TABS, TAB_STRATEGY, TAB_HEALTH, TAB_PANTRY, TAB_DIET, TAB_EXERCISE,
-    TAB_PATTERNS, STRATEGY_COLS, HEALTH_FIELDS, DIET_ROWS, EXERCISE_ROWS,
-    PATTERN_COLS, EXERCISE_SUMMARY_HEADERS, DIET_SUMMARY_HEADERS,
-    HEALTH_SUMMARY_HEADERS, PROGRESSION_HEADERS, EXERCISE_SUMMARY_HEADER_ROW,
-    DIET_SUMMARY_HEADER_ROW, HEALTH_SUMMARY_HEADER_ROW, PROGRESSION_HEADER_ROW,
-    NICHE_ROW, load_dotenv,
+    TAB_PATTERNS, TAB_CHARTS, TAB_DASHBOARD, STRATEGY_COLS, HEALTH_FIELDS,
+    DIET_ROWS, EXERCISE_ROWS, PATTERN_COLS, EXERCISE_SUMMARY_HEADERS,
+    DIET_SUMMARY_HEADERS, HEALTH_SUMMARY_HEADERS, PROGRESSION_HEADERS,
+    EXERCISE_SUMMARY_HEADER_ROW, DIET_SUMMARY_HEADER_ROW,
+    HEALTH_SUMMARY_HEADER_ROW, PROGRESSION_HEADER_ROW, NICHE_ROW,
+    CHART_HEADERS, load_dotenv,
 )
 
 # README sheet schema: Ingredient, Amount, Expiry. Storage location is not
@@ -174,12 +175,20 @@ def main():
         _header(ws, EXERCISE_SUMMARY_HEADER_ROW, EXERCISE_SUMMARY_HEADERS)
         _header(ws, PROGRESSION_HEADER_ROW, PROGRESSION_HEADERS)
 
+    def _charts(ws):
+        ws.update([CHART_HEADERS], "A1")
+
+    def _dashboard(ws):
+        ws.update([["trAIner Progression"]], "A1")
+
     ensure(TAB_STRATEGY, lambda ws: ws.update([STRATEGY_COLS], "A1"))
     ensure(TAB_PANTRY, _pantry)
     ensure(TAB_PATTERNS, _patterns)
     ensure(TAB_HEALTH, _health)
     ensure(TAB_DIET, _diet)
     ensure(TAB_EXERCISE, _exercise)
+    ensure(TAB_CHARTS, _charts)
+    ensure(TAB_DASHBOARD, _dashboard)
 
     print(f"\nDone. Sheet id: {key}")
     print("Tabs:", [w.title for w in workbook.worksheets()])

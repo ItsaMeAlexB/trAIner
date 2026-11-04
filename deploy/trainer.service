@@ -1,0 +1,12 @@
+[Unit]
+Description=trAIner daily plan
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=alex
+WorkingDirectory=/opt/trAIner
+EnvironmentFile=/opt/trAIner/.env
+ExecStart=/opt/trAIner/.venv/bin/python main.py
+TimeoutStartSec=1800

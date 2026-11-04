@@ -1,4 +1,0 @@
-# NRCD (National Running Club Database), normalised once to flat/perfect weather
-# and filtered to 5K and 400m/800m, split by age and gender. Generate with the
-# nrcd package per README 'Setup -> Download and prepare offline datasets'.
-# Schema: distance_m,gender,age_group,benchmark_seconds

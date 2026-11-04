@@ -109,5 +109,37 @@ class CollapseTests(unittest.TestCase):
         self.assertEqual(row["Source"], "mixed")
 
 
+class BenchmarkTests(unittest.TestCase):
+    def test_age_band_and_weight_class(self):
+        self.assertEqual(main._age_band(34), "30-34")
+        self.assertEqual(main._age_band(82), "80+")
+        self.assertEqual(main._weight_class("M", 80), 83)
+        self.assertEqual(main._weight_class("F", 60), 63)
+
+    def test_running_benchmark_lookup(self):
+        bands = main._lookup_running("M", 30, "5000m")
+        self.assertTrue(bands)
+        self.assertIn(50, bands)
+
+    def test_lift_benchmark_lookup(self):
+        bands = main._lookup_lift("M", "squat", 80, 30)
+        self.assertTrue(bands)
+        self.assertIn(50, bands)
+
+    def test_chart_row_has_user_and_bands(self):
+        week = {"Week_start": "2026-11-02", "5K_equiv_s": 1500,
+                "Squat_e1RM": 100, "Bodyweight_kg": 80}
+        row = main._chart_row(week, "M", 1990, 80)
+        self.assertEqual(row["5K_user"], 1500)
+        self.assertEqual(row["Squat_user"], 100)
+        self.assertNotEqual(row["Squat_P50"], "")
+        self.assertNotEqual(row["5K_P50"], "")
+
+    def test_hevy_coefficient(self):
+        self.assertAlmostEqual(main._lift_coefficient("leg press"), 3.0)
+        self.assertAlmostEqual(main._lift_coefficient("bench press"), 1.0)
+
+
 if __name__ == "__main__":
     unittest.main()
+

@@ -21,6 +21,8 @@ This module is deliberately side-effectful: there is no dry-run mode (README).
 
 from __future__ import annotations
 
+import csv
+import functools
 import json
 import logging
 import os
@@ -53,7 +55,10 @@ TAB_PANTRY = "Pantry"
 TAB_DIET = "Diet"
 TAB_EXERCISE = "Exercise"
 TAB_PATTERNS = "Patterns"
-TABS = [TAB_STRATEGY, TAB_HEALTH, TAB_PANTRY, TAB_DIET, TAB_EXERCISE, TAB_PATTERNS]
+TAB_CHARTS = "Charts"
+TAB_DASHBOARD = "Dashboard"
+TABS = [TAB_STRATEGY, TAB_HEALTH, TAB_PANTRY, TAB_DIET, TAB_EXERCISE,
+        TAB_PATTERNS, TAB_CHARTS, TAB_DASHBOARD]
 
 # Appended to the daily prompt when the 4-week review is due (README "Patterns &
 # 4-week review"): research strategies against current evidence, incl. PubMed.
@@ -67,6 +72,8 @@ REVIEW_PROMPT_TAIL = (
 DATA_DIR = "data"
 COEFF_FILE = os.path.join(DATA_DIR, "exercise_coefficients.json")
 HARDY_FILE = os.path.join(DATA_DIR, "strength-report-2026.csv")
+RUNNING_BENCH_FILE = os.path.join(DATA_DIR, "benchmarks", "running_percentiles.csv")
+LIFT_BENCH_FILE = os.path.join(DATA_DIR, "benchmarks", "lift_percentiles.csv")
 
 # Strategy rows are keyed by Category (README "Sheets schema").
 STRATEGY_COLS = ["Category", "Detail", "Citations", "Status", "Updated"]
@@ -74,15 +81,16 @@ STATE_CATEGORY = "__state__"  # internal counters (last review date etc.)
 
 # Health is a column-per-day tab; rows are health fields (README schema).
 HEALTH_FIELDS = [
-    "Age", "Gender", "Height_cm", "Weight_kg", "Latitude", "Longitude",
-    "Location", "Sleep_hours", "Sleep_quality", "Last_cycle_start",
-    "Cycle_length_avg", "Cycle_day", "Injuries", "Medical_events", "Retinol",
-    "Dermarolling", "Free_text", "Complete",
+    "Age", "Birth_year", "Gender", "Height_cm", "Weight_kg", "Latitude",
+    "Longitude", "Location", "Sleep_hours", "Sleep_quality",
+    "Last_cycle_start", "Cycle_length_avg", "Cycle_day", "Injuries",
+    "Medical_events", "Retinol", "Dermarolling", "Free_text", "Complete",
 ]
 # These fields carry forward unchanged each new day (edited manually when they
 # change, e.g. the user travels -> Location).
-CARRY_FORWARD = {"Age", "Gender", "Height_cm", "Latitude", "Longitude",
-                 "Location", "Last_cycle_start", "Cycle_length_avg"}
+CARRY_FORWARD = {"Age", "Birth_year", "Gender", "Height_cm", "Latitude",
+                 "Longitude", "Location", "Last_cycle_start",
+                 "Cycle_length_avg"}
 
 # Diet and Exercise are two-columns-per-day tabs: Recommended | Done.
 # Completeness is a row inside the day block, so no third column is needed.
@@ -137,6 +145,24 @@ BENCHMARK_LIFTS = {
             "arnold press", "lateral raise"),
     "Pull": ("pull-up", "pullup", "chin-up", "chinup", "row", "pulldown"),
 }
+
+# Chart data is written to its own tab; charts on Dashboard reference it.
+PERCENTILE_BANDS = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+CHART_METRICS = [
+    ("5K", "5K_equiv_s", "running", "5000m"),
+    ("400m", "400m_equiv_s", "running", "400m"),
+    ("Squat", "Squat_e1RM", "lift", "squat"),
+    ("Bench", "Bench_e1RM", "lift", "bench"),
+    ("Posterior", "Posterior_e1RM", "lift", "deadlift"),
+    ("OHP", "OHP_e1RM", "lift", "ohp"),
+    ("Pull", "Pull_e1RM", "lift", "pull"),
+]
+CHART_HEADERS = ["Week_start"]
+for _label, _col, _kind, _key in CHART_METRICS:
+    CHART_HEADERS.append(f"{_label}_user")
+    CHART_HEADERS += [f"{_label}_P{p}" for p in PERCENTILE_BANDS]
+CHART_WEEKS = PROGRESSION_WEEKS
+
 
 
 
@@ -508,6 +534,24 @@ def _load_coefficients() -> dict:
         return {}
 
 
+def _hardy_percentiles() -> dict:
+    out = {}
+    try:
+        with open(HARDY_FILE) as f:
+            for line in f:
+                parts = line.rstrip("\n").split(",")
+                if len(parts) != 6 or parts[0] != "percentiles":
+                    continue
+                exercise, metric, value = parts[1], parts[4], parts[5]
+                try:
+                    out.setdefault(exercise, {})[metric] = float(value)
+                except ValueError:
+                    continue
+    except OSError:
+        pass
+    return out
+
+
 def _load_hardy() -> dict:
     """Minimal Hardy overlay: exercise -> {milestone -> {metric: value}}."""
     idx = {}
@@ -531,6 +575,20 @@ def _benchmark_lift(exercise: str) -> str | None:
         if any(key in ex for key in keys):
             return benchmark
     return None
+
+
+def _lift_coefficient(exercise: str) -> float:
+    """Hevy coefficient relative to the group reference; 1.0 if unknown."""
+    ex = exercise.lower()
+    for entries in _load_coefficients().values():
+        for entry in entries:
+            if any(key in ex for key in entry.get("k", [])):
+                try:
+                    return float(entry.get("c", 1.0)) or 1.0
+                except (TypeError, ValueError):
+                    return 1.0
+    return 1.0
+
 
 
 
@@ -638,6 +696,142 @@ def _week_start(date_str: str) -> str:
 
 
 
+def _sex_code(value: str) -> str:
+    v = str(value).strip().lower()
+    if v.startswith("m"):
+        return "M"
+    if v.startswith("f"):
+        return "F"
+    return ""
+
+
+def _age_band(age: int) -> str:
+    if age >= 80:
+        return "80+"
+    lo = (age // 5) * 5
+    return f"{lo}-{lo + 4}"
+
+
+def _weight_class(sex: str, weight: float) -> int:
+    classes = ([53, 59, 66, 74, 83, 93, 105, 120, 999] if sex == "M"
+               else [43, 47, 52, 57, 63, 69, 76, 84, 999])
+    for upper in classes:
+        if weight <= upper:
+            return upper
+    return classes[-1]
+
+
+@functools.lru_cache(maxsize=1)
+def _load_running_benchmarks() -> dict:
+    index: dict[tuple[str, str, str], dict[int, float]] = {}
+    try:
+        with open(RUNNING_BENCH_FILE, newline="") as f:
+            for row in csv.DictReader(f):
+                key = (row["sex"], row["age_band"], row["event"])
+                index.setdefault(key, {})[int(row["percentile"])] = float(
+                    row["time_s"])
+    except OSError:
+        pass
+    return index
+
+
+@functools.lru_cache(maxsize=1)
+def _load_lift_benchmarks() -> dict:
+    index: dict[tuple[str, str, int, str], dict[int, float]] = {}
+    try:
+        with open(LIFT_BENCH_FILE, newline="") as f:
+            for row in csv.DictReader(f):
+                key = (row["sex"], row["lift"], int(row["weight_class_kg"]),
+                       row["age"])
+                index.setdefault(key, {})[int(row["percentile"])] = float(
+                    row["kg"])
+    except OSError:
+        pass
+    return index
+
+
+def _lookup_running(sex: str, age: int, event: str) -> dict[int, float]:
+    index = _load_running_benchmarks()
+    for key in ((sex, _age_band(age), event), (sex, "all", event)):
+        if key in index:
+            return index[key]
+    return {}
+
+
+def _lookup_lift(sex: str, lift: str, weight: float, age: int) -> dict[int, float]:
+    index = _load_lift_benchmarks()
+    weight_class = _weight_class(sex, weight)
+    for age_key in (str(age), "all"):
+        key = (sex, lift, weight_class, age_key)
+        if key in index:
+            return index[key]
+    return {}
+
+
+def _cohort_bands(sex: str, birth_year: int, week_start: str,
+                  weight: float) -> dict:
+    out = {}
+    if not sex or birth_year <= 0:
+        return out
+    age = max(15, min(90, int(week_start[:4]) - birth_year))
+    for label, _col, kind, key in CHART_METRICS:
+        data = {}
+        if kind == "running":
+            data = _lookup_running(sex, age, key)
+        elif weight > 0:
+            data = _lookup_lift(sex, key, weight, age)
+        for pct in PERCENTILE_BANDS:
+            out[f"{label}_P{pct}"] = data.get(pct, "")
+    return out
+
+
+def _chart_row(week: dict, sex: str, birth_year: int, weight: float) -> dict:
+    row = {"Week_start": week["Week_start"]}
+    for label, col, _kind, _key in CHART_METRICS:
+        row[f"{label}_user"] = week.get(col, "")
+    row.update(_cohort_bands(sex, birth_year, week["Week_start"], weight))
+    return row
+
+
+def _health_profile(sheets: Sheets) -> tuple[str, int, float]:
+    history = sheets.rolling_history(TAB_HEALTH, 1)
+    if not history:
+        return "", 0, 0.0
+    col = history[-1]["cols"][0]
+    values = {field: (col[i] if i < len(col) else "")
+              for i, field in enumerate(HEALTH_FIELDS)}
+    sex = _sex_code(values.get("Gender", ""))
+    birth_year = 0
+    try:
+        birth_year = int(float(values.get("Birth_year", "")))
+    except (TypeError, ValueError):
+        try:
+            birth_year = datetime.now(timezone.utc).year - int(
+                float(values.get("Age", "")))
+        except (TypeError, ValueError):
+            pass
+    try:
+        weight = float(values.get("Weight_kg", ""))
+    except (TypeError, ValueError):
+        weight = 0.0
+    return sex, birth_year, weight
+
+
+def write_chart_data(sheets: Sheets) -> None:
+    sex, birth_year, weight = _health_profile(sheets)
+    rows = sheets.read_table(TAB_EXERCISE, PROGRESSION_HEADER_ROW,
+                             PROGRESSION_HEADERS, PROGRESSION_WEEKS)
+    for week in rows:
+        row_weight = week.get("Bodyweight_kg", "") or weight
+        try:
+            row_weight = float(row_weight)
+        except (TypeError, ValueError):
+            row_weight = weight
+        chart = _chart_row(week, sex, birth_year, row_weight)
+        sheets.upsert_table_row(TAB_CHARTS, 1, CHART_HEADERS, "Week_start",
+                                chart, CHART_WEEKS)
+
+
 def collapse_logs(sheets: Sheets) -> dict:
     """Collapse recent logs into weekly progression and summary data.
 
@@ -695,7 +889,8 @@ def collapse_logs(sheets: Sheets) -> dict:
             if not benchmark or not (1 <= lift["reps"] <= 10):
                 continue
             try:
-                one_rm = estimate_1rm(lift["weight"], lift["reps"], "epley")
+                one_rm = (estimate_1rm(lift["weight"], lift["reps"], "epley")
+                          / _lift_coefficient(lift["name"]))
             except (ValueError, TypeError):
                 continue
             entry["lifts"].append(
@@ -784,9 +979,18 @@ def collapse_logs(sheets: Sheets) -> dict:
 
     coeffs = _load_coefficients()
     hardy = _load_hardy()
-    overlay = (f"Hardy benchmarks present: {len(hardy)} exercises; "
-               f"Hevy coefficients present: {len(coeffs)}"
-               if hardy else "Hardy/Hevy datasets not yet committed")
+    hardy_pct = _hardy_percentiles()
+    hardy_lines = []
+    for label, key in (("Squat", "squat"), ("Bench", "bench-press"),
+                       ("Posterior", "deadlift")):
+        p50 = hardy_pct.get(key, {}).get("e1rmP50Kg")
+        p90 = hardy_pct.get(key, {}).get("e1rmP90Kg")
+        if p50 is not None or p90 is not None:
+            hardy_lines.append(f"{label}: P50 {p50 or '?'}kg, P90 {p90 or '?'}kg")
+    overlay = ("Hardy: " + "; ".join(hardy_lines)
+               if hardy_lines else
+               f"Hardy benchmarks present: {len(hardy)} exercises")
+    overlay += f"; Hevy coefficients: {len(coeffs)} groups"
 
     latest_niche = {}
     for _, row in sorted(weekly_out.items()):
@@ -1061,6 +1265,17 @@ def build_context(sheets: Sheets, weather: str, today: str,
         TAB_EXERCISE, PROGRESSION_HEADER_ROW, PROGRESSION_HEADERS,
         PROGRESSION_WEEKS)
     patterns = sheets.read_rows(TAB_PATTERNS, PATTERN_COLS)
+    sex, birth_year, weight = _health_profile(sheets)
+    week = (collapsed.get("weekly") or {}).get(_week_start(today), {})
+    cohort = {}
+    if week:
+        chart_row = _chart_row(week, sex, birth_year, weight)
+        for label, _col, _kind, _key in CHART_METRICS:
+            cohort[label] = {
+                "user": chart_row.get(f"{label}_user", ""),
+                "p50": chart_row.get(f"{label}_P50", ""),
+                "p90": chart_row.get(f"{label}_P90", ""),
+            }
 
     return {
         "today": today,
@@ -1085,6 +1300,7 @@ def build_context(sheets: Sheets, weather: str, today: str,
             HEALTH_SUMMARY_HEADERS, WEEKLY_SUMMARY_WEEKS),
         "progression_recent": progression[-WEEKLY_SUMMARY_WEEKS:],
         "progression_bests": _progression_bests(progression),
+        "cohort_bands": cohort,
         "weather": weather,
         "collapsed": collapsed,
         "patterns_recent": [r for r in patterns if r.get("Status") != "archived"][-50:],
@@ -1287,6 +1503,7 @@ def write_back(sheets: Sheets, today: str, plan: dict, collapsed: dict) -> None:
             TAB_EXERCISE, PROGRESSION_HEADER_ROW, PROGRESSION_HEADERS,
             "Week_start", values, PROGRESSION_WEEKS)
 
+    write_chart_data(sheets)
     log.info("Wrote back recommendations to Diet/Exercise for %s", today)
 
 

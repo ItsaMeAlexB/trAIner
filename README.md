@@ -23,37 +23,41 @@ This extends to shorthand food logging ("same as yesterday without apple") — n
 
 - **Host:** GitHub Actions today; planned move to a VPS (see VPS deployment).
 - **Schedule:** GitHub Actions at 05:00 UTC. VPS target: **06:15 Europe/Berlin daily** (05:15 UTC in winter, 04:15 UTC in summer), inside DeepSeek off-peak and clear of the 06:30 job.
-- **Data store:** Google Sheets (6 tabs).
+- **Data store:** Google Sheets (8 tabs: 6 data tabs + `Charts` data tab + `Dashboard`).
 - **UI:** Telegram — **one-way only.** No user input via Telegram. No message history sent to DeepSeek. Telegram receives the day's plan and weather summary.
 - **DeepSeek API:** Official host (`https://api.deepseek.com`).
 - **No dry-run mode.**
 
 ## VPS deployment (planned)
 
-The local directory remains the test environment. On the VPS, run the same `main.py` from a single checkout with a systemd timer; no extra scheduler code is needed.
+The local directory remains the test environment. The unit files are committed under `deploy/`; install them on the VPS:
 
-```ini
-# /etc/systemd/system/trainer.service
-[Service]
-WorkingDirectory=/opt/trAIner
-ExecStart=/usr/bin/python3 main.py
-EnvironmentFile=/opt/trAIner/.env
-User=alex
+```bash
+sudo cp deploy/trainer.service deploy/trainer.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now trainer.timer
+systemctl list-timers --all
 ```
 
 ```ini
-# /etc/systemd/system/trainer.timer
+# deploy/trainer.service
+[Service]
+Type=oneshot
+User=alex
+WorkingDirectory=/opt/trAIner
+EnvironmentFile=/opt/trAIner/.env
+ExecStart=/opt/trAIner/.venv/bin/python main.py
+TimeoutStartSec=1800
+```
+
+```ini
+# deploy/trainer.timer
 [Timer]
-OnCalendar=*-*-* 06:15:00
+OnCalendar=*-*-* 06:15:00 Europe/Berlin
 Persistent=true
 ```
 
-```bash
-sudo timedatectl set-timezone Europe/Berlin
-sudo systemctl enable --now trainer.timer
-```
-
-`Persistent=true` catches up after downtime. The target is 06:15 German time (05:15 UTC winter / 04:15 UTC summer), which stays inside DeepSeek off-peak and leaves the 06:30 job untouched.
+`Persistent=true` catches up after downtime. The target is 06:15 German time (05:15 UTC winter / 04:15 UTC summer), inside DeepSeek off-peak and clear of the 06:30 job.
 
 
 ## Daily pipeline
@@ -87,16 +91,18 @@ Each run, in order:
 - Patterns and Strategy, with no raw daily logs (except the last 7 days for continuity).
 - Long-term review and Strategy mutations.
 
-## Sheets schema (6 sheets)
+## Sheets schema (8 tabs)
 
 | Sheet | Purpose |
 |---|---|
 | **Strategy** | Goals, constraints, preferences, validated patterns, standing decisions, **pending design questions awaiting confirmation**, **desired body-fat percentage goal**, **dietary pattern and meal preferences**. E.g., "get stronger but ≤5 hrs gym/week", veganism, food allergies, sleep issues after certain ingredients, good reactions to specific exercises, bulk-prep preference. |
-| **Health** | One column per day, 35-day window. Sleep (length + quality, or free text), menstrual cycle (`Last_cycle_start`, `Cycle_length_avg`, `Cycle_day`), **age, gender**, bodyweight, height, location, injuries, medical events, retinol and dermarolling routines. **Each daily entry includes a `Complete` row.** Plus a 12-week Health summary block. |
+| **Health** | One column per day, 35-day window. Sleep (length + quality, or free text), menstrual cycle (`Last_cycle_start`, `Cycle_length_avg`, `Cycle_day`), **age, birth year, gender**, bodyweight, height, location, injuries, medical events, retinol and dermarolling routines. **Each daily entry includes a `Complete` row.** Plus a 12-week Health summary block. |
 | **Pantry** | Ingredient, **Amount**, Expiry (frozen if applicable). Storage location is not stored; it is assumed from the ingredient (e.g., chicken goes in the fridge). |
 | **Diet** | **Two columns per day:** **Recommended** (target calories/macros/micros; meals composed from pantry, prioritising items closest to expiry) \| **Done** (what was actually eaten, with water). A `Complete` row inside each day block is the completeness marker. 7-day raw window, plus a 12-week Diet summary block. Supplements tracked here. |
 | **Exercise** | **Two columns per day:** **Recommended** (exercises with cues, sourced from wger and DeepSeek research) \| **Done** (`done`, `failed on 4th rep`, `felt light, 3 RIR`, free-text runs and other activities). A `Complete` row is the marker. 14-day raw window. Below it: a 12-week Exercise summary, a one-line `Niche_trend` narrative, and the **104-week progression table** (Squat, Bench, Posterior chain, OHP, Pull, 5K, 400m, jump, sprint, mobility, strategy annotation). Other activities are logged but not collapsed into long-term progression. |
 | **Patterns** | Deduplicated significant events with a `Status` (`new` / `archived`). Sent to DeepSeek every 4 weeks; the daily run decides what is worthy (sickness, low iron, drastic progression change, reported pain). Archived by the review so the next window starts clean. |
+| **Charts** | Machine-managed chart data: one row per week, user values plus p10–p90 cohort bands for 5K, 400m, Squat, Bench, Posterior, OHP and Pull. Charts reference this tab. |
+| **Dashboard** | Human-facing line charts: user progression versus age/sex/weight-class percentile bands. Created once by `scripts/setup_charts.py`. |
 
 ## Data retention and windows
 
@@ -204,20 +210,36 @@ Non-lifting and non-running activities are just treated separately — something
 | Dataset | Source | License | Purpose |
 |---|---|---|---|
 | Hardy Strength Progression Report 2026 | hardy.app | CC BY 4.0 | Lifting progression benchmarks: time to plate milestones, 1RM gains by month. Does not contain bodyweight/age/sex. |
-| Hevy exercise coefficients | GitHub (`GROUP_COEFFS` in `src/engine.js`) | Open-source | Exercise-to-exercise conversion ratios |
-| NRCD (National Running Club Database) | Zenodo / GitHub | CC BY 4.0 | 128,963 performances with elevation/weather. Normalised once to flat/perfect-weather, filtered to 5K and 400m/800m, split by age and gender. |
+| Hevy exercise coefficients | `BenjiPy/hevy-ranks` `src/engine.js` | MIT | Exercise-to-exercise conversion ratios; generated by `scripts/build_exercise_coefficients.py`. |
+| Italian Athletics historical bests | Kaggle `davideliu/italian-athletics-historical-best-performances` | CC0 | 900k+ age/sex running results, 2005–2021, including 400m/800m/5000m/10000m; source for running percentile bands. |
+| LiftGauge strength cubes | `arvidfcjarfalla-prog/liftgauge-strength-data` | CC0 (data), MIT (code) | Pre-aggregated OpenPowerlifting S/B/D percentiles by sex × bodyweight class × single-year age × equipment. |
+| OpenPowerlifting bulk CSV | openpowerlifting.org | CC0 | Raw fallback for rebuilding lift percentiles; not committed. |
+| NRCD | GitHub v2.1.0 | CC BY 4.0 | 143,868 college running results; gender/grade, no age. Secondary running comparison. |
+| Fitness Volt `fvss/v1` | fitnessvolt.com | CC BY 4.0 | Optional OHP/Pull/Row standards; only used if the endpoint is reachable. |
 
-**Maintenance note:** benchmark datasets should be regenerated periodically (e.g., yearly) as new race data is added and exercise databases update.
+Generated benchmark files (committed):
+
+| File | Purpose |
+|---|---|
+| `data/benchmarks/running_percentiles.csv` | Sex × 5-year age band × event × p10–p90 time, with n. |
+| `data/benchmarks/lift_percentiles.csv` | Sex × lift × IPF weight class × age × p10–p90 kg, with n. |
+| `data/exercise_coefficients.json` | Hevy `GROUP_COEFFS` extracted as JSON. |
+
+**Maintenance note:** rebuild scripts are provided for when a source dataset updates; regeneration is optional and the percentile bands are stable over multi-year windows.
 
 ## Local files (committed to repo)
 
 | File | Purpose |
 |---|---|
 | `calcpace_port.py` | Python port of calcpace: Minetti gradient, El Helou/Ely heat, NCAA altitude, Riegel/Daniels race predictions, VDOT |
-| `data/running_benchmarks.csv` | Normalised NRCD, filtered and standardised |
-| `data/exercise_coefficients.json` | Extracted Hevy `GROUP_COEFFS` |
-| `data/strength-report-2026.csv` | Hardy progression benchmarks |
-| `tests/test_main.py` | Stdlib `unittest` checks for parsers, weekly aggregation, context rendering |
+| `data/benchmarks/running_percentiles.csv` | Age/sex running percentile bands (Italian Athletics, CC0) |
+| `data/benchmarks/lift_percentiles.csv` | Age/sex/weight-class lift percentile bands (LiftGauge, CC0) |
+| `data/exercise_coefficients.json` | Extracted Hevy `GROUP_COEFFS` (MIT) |
+| `data/strength-report-2026.csv` | Hardy progression benchmarks (CC BY 4.0) |
+| `scripts/build_*.py` | Rebuild compact benchmark files; raw downloads stay in `data/raw/` |
+| `scripts/setup_charts.py` | Create the Dashboard charts once |
+| `deploy/trainer.{service,timer}` | VPS systemd units |
+| `tests/test_main.py` | Stdlib `unittest` checks for parsers, benchmarks, charts, aggregation |
 
 ## Decision-making process
 
@@ -281,18 +303,24 @@ Service account with Editor access on the target spreadsheet. Credentials JSON (
 # Lifting benchmarks
 curl -o data/strength-report-2026.csv https://hardy.app/strength-report-data.csv
 
-# Exercise coefficients (extract GROUP_COEFFS from hevy-ranks repo)
-# → data/exercise_coefficients.json
+# Hevy coefficients -> data/exercise_coefficients.json
+python scripts/build_exercise_coefficients.py
 
-# Running benchmarks (NRCD, normalised to flat/perfect-weather, 5K and 400m/800m)
-# Use nrcd Python package for standardisation; output → data/running_benchmarks.csv
+# Running percentile bands (Italian Athletics, CC0) -> data/benchmarks/running_percentiles.csv
+python scripts/build_running_benchmarks.py
+
+# Lift percentile bands (LiftGauge/OpenPowerlifting, CC0) -> data/benchmarks/lift_percentiles.csv
+python scripts/build_lift_benchmarks.py
 ```
+
+Raw source downloads go to `data/raw/` (gitignored); only the compact CSVs are committed.
 
 ### 3. Create sheet tabs
 
 ```bash
 python setup_sheets.py                 # idempotent: create/repair tabs
 python setup_sheets.py --reset-rolling # after a schema change: backs up Health/Diet/Exercise, keeps Strategy/Pantry/Patterns
+python scripts/setup_charts.py         # create the 7 Dashboard charts (once)
 ```
 
 ### 4. GitHub Secrets
@@ -318,7 +346,11 @@ GitHub Actions workflow runs on `cron: "0 5 * * *"` (05:00 UTC). Use `workflow_d
 
 ```bash
 pip install -r requirements.txt
-python setup_sheets.py --reset-rolling   # first time, or after a schema change
+python scripts/build_exercise_coefficients.py
+python scripts/build_running_benchmarks.py
+python scripts/build_lift_benchmarks.py
+python setup_sheets.py --reset-rolling
+python scripts/setup_charts.py
 python main.py
 python -m unittest discover -s tests -v
 ```

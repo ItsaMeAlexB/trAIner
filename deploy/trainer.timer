@@ -1,0 +1,10 @@
+[Unit]
+Description=Run trAIner daily at 06:15 Europe/Berlin
+
+[Timer]
+OnCalendar=*-*-* 06:15:00 Europe/Berlin
+Persistent=true
+Unit=trainer.service
+
+[Install]
+WantedBy=timers.target

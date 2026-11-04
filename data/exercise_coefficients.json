@@ -1,4 +1,825 @@
 {
-  "_note": "Hevy exercise-to-exercise conversion ratios (GROUP_COEFFS). Extract from the hevy-ranks repo (src/engine.js) per README 'Setup -> Download and prepare offline datasets'. Absent values degrade to the built-in fallback muscle-group map in main.py.",
-  "GROUP_COEFFS": {}
+  "_note": "Hevy exercise-to-exercise conversion ratios. Reference lift coefficient is 1.0; reference_e1RM = logged_e1RM / c.",
+  "source": "github.com/BenjiPy/hevy-ranks src/engine.js",
+  "license": "MIT",
+  "GROUP_COEFFS": {
+    "legs": [
+      {
+        "k": [
+          "front squat",
+          "squat avant",
+          "sentadilla frontal",
+          "frontkniebeuge",
+          "agachamento frontal",
+          "squat frontale"
+        ],
+        "c": 0.85
+      },
+      {
+        "k": [
+          "hack squat",
+          "hack"
+        ],
+        "c": 1.35
+      },
+      {
+        "k": [
+          "pendulum",
+          "pendule"
+        ],
+        "c": 1.4
+      },
+      {
+        "k": [
+          "box squat"
+        ],
+        "c": 0.95
+      },
+      {
+        "k": [
+          "split squat",
+          "bulgarian",
+          "bulgare",
+          "sentadilla bulgara",
+          "bulgarische kniebeuge",
+          "agachamento bulgaro",
+          "squat bulgaro"
+        ],
+        "c": 0.5
+      },
+      {
+        "k": [
+          "goblet"
+        ],
+        "c": 0.5
+      },
+      {
+        "k": [
+          "sissy"
+        ],
+        "c": 0.5,
+        "isolation": true
+      },
+      {
+        "k": [
+          "belt squat"
+        ],
+        "c": 1.4
+      },
+      {
+        "k": [
+          "leg press",
+          "presse a cuisses",
+          "presse cuisses",
+          "presse",
+          "prensa",
+          "beinpresse",
+          "pressa gambe",
+          "pressa"
+        ],
+        "c": 3.0
+      },
+      {
+        "k": [
+          "romanian",
+          "rdl",
+          "roumain",
+          "rumano",
+          "rumeno",
+          "rumano"
+        ],
+        "c": 1.05
+      },
+      {
+        "k": [
+          "stiff",
+          "jambes tendues",
+          "gestreckt"
+        ],
+        "c": 1.0
+      },
+      {
+        "k": [
+          "good morning"
+        ],
+        "c": 0.75
+      },
+      {
+        "k": [
+          "deadlift",
+          "souleve de terre",
+          "peso muerto",
+          "kreuzheben",
+          "levantamento terra",
+          "stacco"
+        ],
+        "c": 1.2
+      },
+      {
+        "k": [
+          "hip thrust",
+          "poussee de hanche",
+          "empuje de cadera",
+          "huftheben",
+          "elevacao de quadril",
+          "spinta anca"
+        ],
+        "c": 1.6
+      },
+      {
+        "k": [
+          "glute bridge",
+          "pont fessier",
+          "puente gluteo",
+          "brucke",
+          "ponte gluteo"
+        ],
+        "c": 1.4
+      },
+      {
+        "k": [
+          "cable pull through",
+          "pull through",
+          "pull-through"
+        ],
+        "c": 0.9
+      },
+      {
+        "k": [
+          "leg extension",
+          "extension des jambes",
+          "extension jambes",
+          "leg extensions",
+          "beinstrecker",
+          "estensione gambe",
+          "extension cuadriceps"
+        ],
+        "c": 0.9,
+        "isolation": true
+      },
+      {
+        "k": [
+          "leg curl",
+          "curl ischio",
+          "ischio",
+          "leg curls",
+          "hamstring curl",
+          "beinbeuger",
+          "flessione gambe",
+          "curl femoral"
+        ],
+        "c": 0.8,
+        "isolation": true
+      },
+      {
+        "k": [
+          "calf",
+          "mollet",
+          "pantorrilla",
+          "wade",
+          "panturrilha",
+          "polpaccio"
+        ],
+        "c": 2.8,
+        "isolation": true
+      },
+      {
+        "k": [
+          "adductor",
+          "abductor",
+          "adducteur",
+          "abducteur",
+          "aductor",
+          "abductor"
+        ],
+        "c": 0.7,
+        "isolation": true
+      },
+      {
+        "k": [
+          "lunge",
+          "fente",
+          "zancada",
+          "ausfallschritt",
+          "afundo",
+          "affondo"
+        ],
+        "c": 0.5
+      },
+      {
+        "k": [
+          "step up",
+          "step-up",
+          "montee de banc"
+        ],
+        "c": 0.5
+      },
+      {
+        "k": [
+          "squat",
+          "sentadilla",
+          "kniebeuge",
+          "agachamento"
+        ],
+        "c": 1.0
+      }
+    ],
+    "chest": [
+      {
+        "k": [
+          "incline",
+          "inclin\u00e9",
+          "inclinado",
+          "schrag",
+          "inclinada",
+          "inclinata"
+        ],
+        "c": 0.85
+      },
+      {
+        "k": [
+          "decline",
+          "declin\u00e9",
+          "declinado",
+          "abfallend",
+          "declinada",
+          "declinata"
+        ],
+        "c": 1.0
+      },
+      {
+        "k": [
+          "ecarte",
+          "fly",
+          "flye",
+          "pec deck",
+          "pec dec",
+          "butterfly",
+          "apertura",
+          "aperture",
+          "kurzhantel fly",
+          "abertura",
+          "croce"
+        ],
+        "c": 0.8,
+        "isolation": true
+      },
+      {
+        "k": [
+          "cable crossover",
+          "crossover"
+        ],
+        "c": 0.7,
+        "isolation": true
+      },
+      {
+        "k": [
+          "chest press",
+          "machine",
+          "prensa pecho"
+        ],
+        "c": 1.2
+      },
+      {
+        "k": [
+          "dumbbell",
+          "haltere",
+          "db ",
+          "mancuerna",
+          "kurzhantel",
+          "halter",
+          "manubri"
+        ],
+        "c": 0.9
+      },
+      {
+        "k": [
+          "dips",
+          "dip"
+        ],
+        "c": 1.1
+      },
+      {
+        "k": [
+          "push up",
+          "pushup",
+          "push-up",
+          "pompe",
+          "flexion pecho",
+          "liegestutz",
+          "flessione",
+          "flexao"
+        ],
+        "c": 0.6
+      },
+      {
+        "k": [
+          "bench press",
+          "developpe couche",
+          "developpe",
+          "bench",
+          "press banca",
+          "prensa banca",
+          "bankdruck",
+          "supino",
+          "panca"
+        ],
+        "c": 1.0
+      }
+    ],
+    "back": [
+      {
+        "k": [
+          "deadlift",
+          "souleve de terre",
+          "peso muerto",
+          "kreuzheben",
+          "levantamento terra",
+          "stacco"
+        ],
+        "c": 1.4
+      },
+      {
+        "k": [
+          "pendlay"
+        ],
+        "c": 1.0
+      },
+      {
+        "k": [
+          "meadows"
+        ],
+        "c": 0.8
+      },
+      {
+        "k": [
+          "t-bar",
+          "t bar",
+          "tbar"
+        ],
+        "c": 1.1
+      },
+      {
+        "k": [
+          "chest supported",
+          "chest-supported"
+        ],
+        "c": 0.8
+      },
+      {
+        "k": [
+          "seated",
+          "assis",
+          "cable row",
+          "tirage poulie",
+          "rowing poulie",
+          "tirage horizontal",
+          "sentado",
+          "sitzend",
+          "sentado",
+          "seduto"
+        ],
+        "c": 1.1
+      },
+      {
+        "k": [
+          "lat pulldown",
+          "pulldown",
+          "tirage vertical",
+          "tirage nuque",
+          "tirage",
+          "jalon",
+          "latzug",
+          "puxada",
+          "lat machine"
+        ],
+        "c": 1.0
+      },
+      {
+        "k": [
+          "pull up",
+          "pull-up",
+          "pullup",
+          "chin",
+          "traction",
+          "dominada",
+          "klimmzug",
+          "barra fixa",
+          "trazion",
+          "muscle up"
+        ],
+        "c": 0.9
+      },
+      {
+        "k": [
+          "dumbbell row",
+          "one arm",
+          "single arm",
+          "rowing haltere",
+          "unilateral",
+          "einarmig",
+          "una mano"
+        ],
+        "c": 0.5
+      },
+      {
+        "k": [
+          "back extension",
+          "hyperextension",
+          "hyper extension",
+          "lombaires",
+          "extension lombaire",
+          "iperestensione",
+          "reverse hyper"
+        ],
+        "c": 2.0,
+        "isolation": true
+      },
+      {
+        "k": [
+          "shrug",
+          "haussement",
+          "shrugs",
+          "encogimiento",
+          "nackenheben",
+          "encolhimento",
+          "scrollata"
+        ],
+        "c": 1.9,
+        "isolation": true
+      },
+      {
+        "k": [
+          "row",
+          "rowing",
+          "rudern",
+          "remo",
+          "remada",
+          "rematore",
+          "vogatore"
+        ],
+        "c": 1.0
+      }
+    ],
+    "shoulders": [
+      {
+        "k": [
+          "push press"
+        ],
+        "c": 1.2
+      },
+      {
+        "k": [
+          "arnold"
+        ],
+        "c": 0.8
+      },
+      {
+        "k": [
+          "landmine"
+        ],
+        "c": 0.85
+      },
+      {
+        "k": [
+          "lateral raise",
+          "side raise",
+          "elevation laterale",
+          "laterale",
+          "elevations laterales",
+          "elevacion lateral",
+          "seitheben",
+          "elevacao lateral",
+          "alzata laterale"
+        ],
+        "c": 0.5,
+        "isolation": true
+      },
+      {
+        "k": [
+          "front raise",
+          "elevation frontale",
+          "frontale",
+          "elevacion frontal",
+          "frontheben",
+          "elevacao frontal",
+          "alzata frontale"
+        ],
+        "c": 0.5,
+        "isolation": true
+      },
+      {
+        "k": [
+          "rear delt",
+          "face pull",
+          "reverse fly",
+          "oiseau",
+          "posterior fly",
+          "hinterer"
+        ],
+        "c": 0.55,
+        "isolation": true
+      },
+      {
+        "k": [
+          "upright row",
+          "tirage menton",
+          "rowing menton",
+          "remo al menton",
+          "aufrechtes rudern",
+          "remada alta",
+          "tirata al mento"
+        ],
+        "c": 0.6
+      },
+      {
+        "k": [
+          "dumbbell",
+          "haltere",
+          "db ",
+          "mancuerna",
+          "kurzhantel",
+          "manubri"
+        ],
+        "c": 0.85
+      },
+      {
+        "k": [
+          "overhead",
+          "military",
+          "shoulder press",
+          "ohp",
+          "militaire",
+          "developpe epaules",
+          "developpe",
+          "press",
+          "press militar",
+          "press hombro",
+          "schulterdrucken",
+          "schulterpresse",
+          "desenvolvimento",
+          "pressa spalle"
+        ],
+        "c": 1.0
+      }
+    ],
+    "arms": [
+      {
+        "k": [
+          "machine dip",
+          "dips assis",
+          "dips machine",
+          "dip machine",
+          "seated dip"
+        ],
+        "c": 2.6
+      },
+      {
+        "k": [
+          "close grip",
+          "close-grip",
+          "prise serree",
+          "agarre cerrado",
+          "enge griff",
+          "presa stretta"
+        ],
+        "c": 1.6
+      },
+      {
+        "k": [
+          "skull",
+          "lying tricep",
+          "lying triceps",
+          "french",
+          "barre au front",
+          "trizeps druck"
+        ],
+        "c": 0.7,
+        "isolation": true
+      },
+      {
+        "k": [
+          "pushdown",
+          "push down",
+          "pressdown",
+          "poulie triceps",
+          "corda triceps",
+          "triceps na corda",
+          "corda",
+          "triceps polea",
+          "trizepsdrucken"
+        ],
+        "c": 1.9,
+        "isolation": true
+      },
+      {
+        "k": [
+          "overhead tricep",
+          "overhead extension",
+          "extension nuque",
+          "extension au dessus"
+        ],
+        "c": 0.6,
+        "isolation": true
+      },
+      {
+        "k": [
+          "extension triceps",
+          "triceps",
+          "trizeps",
+          "tricipite"
+        ],
+        "c": 2.2,
+        "isolation": true
+      },
+      {
+        "k": [
+          "dips",
+          "dip"
+        ],
+        "c": 1.3
+      },
+      {
+        "k": [
+          "preacher",
+          "pupitre",
+          "predicador",
+          "scott curl"
+        ],
+        "c": 0.85,
+        "isolation": true
+      },
+      {
+        "k": [
+          "hammer",
+          "marteau",
+          "martillo",
+          "hammercurl"
+        ],
+        "c": 0.9,
+        "isolation": true
+      },
+      {
+        "k": [
+          "concentration"
+        ],
+        "c": 0.55,
+        "isolation": true
+      },
+      {
+        "k": [
+          "spider curl",
+          "drag curl",
+          "zottman",
+          "21s"
+        ],
+        "c": 0.85,
+        "isolation": true
+      },
+      {
+        "k": [
+          "ez",
+          "ez-bar",
+          "ez bar",
+          "barre ez"
+        ],
+        "c": 0.95,
+        "isolation": true
+      },
+      {
+        "k": [
+          "dumbbell curl",
+          "db curl",
+          "curl haltere",
+          "curl con manubri",
+          "kurzhantel curl",
+          "rosca alterna"
+        ],
+        "c": 0.85,
+        "isolation": true
+      },
+      {
+        "k": [
+          "wrist",
+          "forearm",
+          "avant-bras",
+          "avant bras",
+          "poignet",
+          "reverse curl",
+          "curl inverse",
+          "curl invertido",
+          "avambraccio",
+          "unterarm",
+          "antebraco",
+          "antebrazo"
+        ],
+        "c": 0.6,
+        "isolation": true
+      },
+      {
+        "k": [
+          "farmer"
+        ],
+        "c": 1.0
+      },
+      {
+        "k": [
+          "curl",
+          "rosca",
+          "riccio",
+          "bizepscurl"
+        ],
+        "c": 1.0,
+        "isolation": true
+      }
+    ],
+    "core": [
+      {
+        "k": [
+          "cable crunch",
+          "crunch poulie"
+        ],
+        "c": 1.0
+      },
+      {
+        "k": [
+          "weighted",
+          "plate",
+          "leste",
+          "con peso",
+          "lastrado",
+          "gewichtet",
+          "com peso",
+          "zavorrato"
+        ],
+        "c": 0.9
+      },
+      {
+        "k": [
+          "hanging",
+          "leg raise",
+          "knee raise",
+          "releve de jambes",
+          "releve de genoux",
+          "releve",
+          "elevacion piernas",
+          "beinheben",
+          "elevacao pernas"
+        ],
+        "c": 0.8
+      },
+      {
+        "k": [
+          "ab wheel",
+          "ab roller",
+          "rueda abdominal",
+          "roulette abdo"
+        ],
+        "c": 1.1
+      },
+      {
+        "k": [
+          "pallof"
+        ],
+        "c": 0.6
+      },
+      {
+        "k": [
+          "russian twist",
+          "torsion russe"
+        ],
+        "c": 0.5
+      },
+      {
+        "k": [
+          "wood chop",
+          "woodchop",
+          "cable chop"
+        ],
+        "c": 0.6
+      },
+      {
+        "k": [
+          "plank",
+          "gainage",
+          "prancha",
+          "plancha"
+        ],
+        "c": 0.5
+      },
+      {
+        "k": [
+          "crunch",
+          "sit up",
+          "situp",
+          "sit-up",
+          "releve de buste",
+          "abdominal",
+          "abdominali",
+          "abdominaux"
+        ],
+        "c": 0.9
+      }
+    ]
+  }
 }

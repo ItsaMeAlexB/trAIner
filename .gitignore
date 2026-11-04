@@ -14,6 +14,7 @@ venv/
 # Runtime artifacts
 trainer.log
 *.log
+data/raw/
 
 # Local doc extraction
 docx_extracted/
