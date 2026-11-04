@@ -379,6 +379,31 @@ This section is the starting point for a fresh context. The working tree is clea
 - VPS unit files in `deploy/` (`06:15 Europe/Berlin`, `Persistent=true`, `TimeoutStartSec=1800`).
 - 16 stdlib tests pass.
 
+### Target activity/progression model (definition of done)
+
+The next implementation should preserve one free-text `Done` cell per activity row, with optional structured syntax:
+
+```text
+run: 5k @ Z2, hilly, 28:00; 6x400m @ 4:00/km, 90s rest
+lift: OHP 3x6@40kg RPE8; Squat 3x5@100kg
+hike: 2h, 900m gain
+swim: 1km, 30min
+hybrid: squat-shoulder press 3x6@...   # do not normalise unless explicitly split
+```
+
+Required behaviour:
+
+1. **Classify each activity** (run, lift, hike, swim, cycle, mobility/plyo, other) before applying any conversion.
+2. **Run segments:** split a session into aerobic and interval portions; normalise only the relevant portion. A 5K Zone 2 hilly run feeds the 5K curve; `6x400m` feeds the 400m anaerobic curve. Extract grade/weather/altitude when present; otherwise use documented defaults.
+3. **Non-running activities:** hikes, swims, cycles and similar do not get running equivalents. Count calories/recovery context and keep the free text; optionally add niche metrics manually.
+4. **Lifts:** parse named sets; map to a benchmark; apply Hevy coefficients (`reference_e1RM = e1RM / coefficient`). Hybrids such as squat-shoulder press are **not normalised by default**; split them only when the log explicitly provides two exercises. If a hybrid must be included, use weekly best, never weekly mean.
+5. **Aggregation:** configurable per metric. Default weekly best for lifts/runs; weekly median for bodyweight/sleep; do not average incomparable or hybrid movements.
+6. **Niche tracking:** free-form text is first-class. Keep a short `Niche_trend` summary (e.g. jump 100→120 cm after weighted squat jumps) and update it only when the change is meaningful. Do not force mobility/plyo work through lifting conversions.
+7. **Long-term charts:** main movement lifts, Olympic lifts for mobility/plyo, and aerobic/anaerobic representative runs. Each has age/sex bands (and weight class for lifts) at p10–p90. The user described these as “vertical lines”; the current implementation plots them as horizontal constant-value series on a time-series chart. Confirm the desired orientation before styling.
+8. **Daily context:** only the recent rolling window needed per domain, current Strategy, and a short progression slice — not the full history.
+9. **Review context:** long-term progression (about 1–2 years), weekly summaries, health/diet event windows, current Strategy and pattern history. The review should detect dips/rises and correlate them with text events (HIIT started, veganism started, gym hours ended, poor sleep, allergies).
+10. **Review pre-run:** a separate run before the daily run reads only long-term data, updates Strategy, then the daily run starts from the updated Strategy. Implement as `--review`/`review.py` and run it from the VPS timer before 06:15.
+
 ### Unresolved / next implementation
 
 1. **Activity parsing is still shallow.** `_parse_runs()` only extracts distance + finish time. It does not parse zone, terrain, elevation, weather, intervals, or hike/swim/cycle text. `collapse_logs()` calls `calcpace_port.normalise_seconds()` with defaults (`grade=0`, `temp=8`, `alt=0`). Next: a structured activity parser that isolates warm-up/interval/cooldown segments, extracts terrain/weather if present, and only normalises the relevant segment. A 5K Zone 2 hilly run contributes to the aerobic curve; a 400m interval contributes to the anaerobic curve. Do not apply running equivalences to hiking/swimming/cycling; those are calories/recovery context only.
