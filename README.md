@@ -399,10 +399,23 @@ Required behaviour:
 4. **Lifts:** parse named sets; map to a benchmark; apply Hevy coefficients (`reference_e1RM = e1RM / coefficient`). Hybrids such as squat-shoulder press are **not normalised by default**; split them only when the log explicitly provides two exercises. If a hybrid must be included, use weekly best, never weekly mean.
 5. **Aggregation:** configurable per metric. Default weekly best for lifts/runs; weekly median for bodyweight/sleep; do not average incomparable or hybrid movements.
 6. **Niche tracking:** free-form text is first-class. Keep a short `Niche_trend` summary (e.g. jump 100→120 cm after weighted squat jumps) and update it only when the change is meaningful. Do not force mobility/plyo work through lifting conversions.
-7. **Long-term charts:** main movement lifts, Olympic lifts for mobility/plyo, and aerobic/anaerobic representative runs. Each has age/sex bands (and weight class for lifts) at p10–p90. The user described these as “vertical lines”; the current implementation plots them as horizontal constant-value series on a time-series chart. Confirm the desired orientation before styling.
+7. **Long-term charts:** main movement lifts, Olympic lifts for mobility/plyo, and aerobic/anaerobic representative runs. Each has age/sex bands (and weight class for lifts) at p10–p90. Bands are **horizontal** because the x-axis is time and the y-axis is performance; the implementation uses constant-value series. Open decision: number of bands and styling.
 8. **Daily context:** only the recent rolling window needed per domain, current Strategy, and a short progression slice — not the full history.
 9. **Review context:** long-term progression (about 1–2 years), weekly summaries, health/diet event windows, current Strategy and pattern history. The review should detect dips/rises and correlate them with text events (HIIT started, veganism started, gym hours ended, poor sleep, allergies).
 10. **Review pre-run:** a separate run before the daily run reads only long-term data, updates Strategy, then the daily run starts from the updated Strategy. Implement as `--review`/`review.py` and run it from the VPS timer before 06:15.
+
+### Open decisions / research needed
+
+These are intentionally not fixed yet:
+
+- **Per-domain raw windows.** Sleep debt ~2 weeks, menstrual cycle ~4 weeks, training recovery ~1 week, diet likely shorter. Current defaults are Exercise 14d, Diet 7d, Health 35d; change the `WINDOW_DAYS` dict once decided.
+- **Aggregation per metric.** Weekly best vs weekly average vs median. Current default: weekly best for lifts/runs, weekly median for bodyweight and sleep. Hybrid lifts must never enter a weekly mean.
+- **Review cadence and ordering.** Current default is 4 weeks inside the daily call. Target is a separate review pre-run before the daily run; cadence may change after research.
+- **Olympic lift scoring.** Absolute kg, bodyweight ratio, or Sinclair/GAMX-style age/bodyweight adjustment.
+- **OHP/Pull bands.** Need a reachable Fitness Volt cache/API or another licensed source; otherwise those charts stay user-only.
+- **Chart band count.** p10–p90 is currently all nine; p10/p25/p50/p75/p90 is the likely cleaner default.
+- **Hybrid lift policy.** Default is no normalisation; split only when the log explicitly provides two exercises.
+- **Non-running activity calories.** Hikes/swims/cycles are recovery/calorie context only; decide the calorie model and whether it is stored or just sent to DeepSeek.
 
 ### Unresolved / next implementation
 
